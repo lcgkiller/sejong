@@ -4,6 +4,7 @@ from pprint import pprint
 from django.http import JsonResponse
 from django.shortcuts import render
 
+
 # Create your views here.
 
 def check_credit(request):
@@ -72,94 +73,152 @@ def check_credit(request):
 
     dict = json.loads(data)
 
+    ### credit ###
+    core_essential = float(dict['root']['listRecord2']['list'][0][
+                               'cul_cdt'])  # 중핵필수 (EX : English Composition, 쓰기와 말하기, 사회와 가치, 신입생 세미나 등)
+    core_essential_selection = 0  # 중핵필수선택 (EX : 정보사회의사이버윤리, 과학사, 세종리더십 등)
+    liberal_arts = 0  # 자유교양
 
-    print("@@@@@@@@@@@@@@@@@@@@ : ", dict['root']['listRecord2']['list'][0]['cul_cdt'])
-    core_essential = float(dict['root']['listRecord2']['list'][0]['cul_cdt'])              # 중핵필수 (EX : English Composition, 쓰기와 말하기, 사회와 가치, 신입생 세미나 등)
-    core_essential_selection = 0                  # 중핵필수선택 (EX : 정보사회의사이버윤리, 과학사, 세종리더십 등)
+    major_basic = 0  # 전공기초교양 (EX : 경영수학, 경영통계학, 공업수학, 고등미적분학 등)
+    major_required = float(dict["root"]['listRecord2']['list'][0]['maj_cdt'])  # 전공필수
+    major_select = float(dict["root"]['listRecord2']['list'][0]['maj_tot'])  # 전공선택
+    major_limit = 15  # 전필제한
+    if major_required > major_limit:
+        major_select += (major_required - major_limit)
+        major_required = major_limit
 
-    major_basic = 0                               # 전공기초교양 (EX : 경영수학, 경영통계학, 공업수학, 고등미적분학 등)
-    liberal_arts = 0                              # 자유교양
-
-    major_required = float(dict["root"]['listRecord2']['list'][0]['maj_cdt'])              # 전공필수
-    major_select = float(dict["root"]['listRecord2']['list'][0]['maj_tot'])                # 전공선택
     sum_of_major = major_required + major_select  # 전공합계
 
-    reqeust_credit = float(dict["root"]['listRecord2']['list'][0]['req_cdt'])              # 신청학점
-    sum_of_all = float(dict["root"]['listRecord2']['list'][0]['gru_cdt'])                  # 취득학점
+    sum_of_bok_essential = 0  # 복수전공 필수
+    sum_of_bok_optional = 0  # 복수전공 선택
+    bok_limit = 15  # 복필제한
 
-    sum_of_bok_essential = 0                      # 복수전공 필수
-    sum_of_bok_optional = 0                       # 복수전공 선택
+    sum_of_boo_essential = 0  # 부전공 필수
+    sum_of_boo_optional = 0  # 부전공 선택
 
-    sum_of_boo_essential = 0                      # 부전공 필수
-    sum_of_boo_optional = 0                       # 부전공 선택
+    sum_of_edu = 0  # 교직
+    sum_of_etc = 0  # 기타
 
-    request_credit =  float(dict["root"]['listRecord2']['list'][0]['req_cdt']) # 신청학점
-    app_credit = float(dict["root"]['listRecord2']['list'][0]['app_cdt'])      # 취득학점
+    reqeust_credit = 0  # 신청학점
+    acquired_credit = float(dict["root"]['listRecord2']['list'][0]['gru_cdt'])  # 취득학점
+    total_credit = 0 # 취득학점 + 이번학기 학점
+    ### credit ###
+
+    result_graduate = False # 통과 / 불통과
 
     for i in range(0, len(dict['root']['listRecord']['list'])):
+        input_type = dict["root"]['listRecord']['list'][i]['grade']
         input_curi = dict["root"]['listRecord']['list'][i]['curi_type_cd_nm']
 
-        if input_curi == "중선":
-            core_essential_selection += float(dict["root"]['listRecord']['list'][i]['cdt'])
+        if input_type is None:
+            reqeust_credit += float(dict["root"]['listRecord']['list'][i]['cdt'])
+        else:
+            if input_curi == "중선":
+                core_essential_selection += float(dict["root"]['listRecord']['list'][i]['cdt'])
 
-        elif input_curi == "기교":
-            major_basic += float((dict['root']['listRecord']['list'][i]['cdt']))
+            elif input_curi == "기교":
+                major_basic += float((dict['root']['listRecord']['list'][i]['cdt']))
 
-        elif input_curi == "자교":
-            liberal_arts += float((dict['root']['listRecord']['list'][i]['cdt']))
+            elif input_curi == "자교":
+                liberal_arts += float((dict['root']['listRecord']['list'][i]['cdt']))
 
-        elif input_curi == "복필":
-            sum_of_bok_essential += float(dict['root']['listRecord']['list'][i]['cdt'])
+            elif input_curi == "복필":
+                if sum_of_bok_essential > bok_limit:
+                    sum_of_bok_optional += float(dict['root']['listRecord']['list'][i]['cdt'])
+                    sum_of_bok_essential = bok_limit
+                else:
+                    sum_of_bok_essential += float(dict['root']['listRecord']['list'][i]['cdt'])
 
-        elif input_curi == "복선":
-            sum_of_bok_optional += float(dict['root']['listRecord']['list'][i]['cdt'])
+            elif input_curi == "복선":
+                sum_of_bok_optional += float(dict['root']['listRecord']['list'][i]['cdt'])
 
-        elif input_curi == "부필":
-            sum_of_boo_essential += float(dict['root']['listRecord']['list'][i]['cdt'])
+            elif input_curi == "부필":
+                sum_of_boo_essential += float(dict['root']['listRecord']['list'][i]['cdt'])
 
-        elif input_curi == "부선":
-            sum_of_boo_optional += float(dict['root']['listRecord']['list'][i]['cdt'])
+            elif input_curi == "부선":
+                sum_of_boo_optional += float(dict['root']['listRecord']['list'][i]['cdt'])
 
-        list_credits = [core_essential, core_essential_selection, liberal_arts, major_basic, major_required,
-                        major_select, sum_of_major, sum_of_bok_essential, sum_of_bok_optional, sum_of_boo_essential,
-                        sum_of_boo_optional, sum_of_all]
+            elif input_curi == "교육":
+                sum_of_edu += float(dict['root']['listRecord']['list'][i]['cdt'])
 
-    if graduation(list_credits) == True:
-        print("??")
-    else:
-        print("X")
+            elif input_curi == "기타":
+                sum_of_etc += float(dict['root']['listRecord']['list'][i]['cdt'])
+
+        total_credit = reqeust_credit + acquired_credit
+
+        list_credits = [core_essential, core_essential_selection, liberal_arts,
+                        major_basic, major_required, major_select, sum_of_major,
+                        sum_of_bok_essential, sum_of_bok_optional,
+                        sum_of_boo_essential, sum_of_boo_optional,
+                        sum_of_edu, sum_of_etc,
+                        reqeust_credit, acquired_credit, total_credit]
+
+    result_graduate = graduation(list_credits)
 
     return JsonResponse(
-        {"credit" : {
-            "중필" : core_essential,
-            "중선" : core_essential_selection,
-            "자교" : liberal_arts,
-            "전공기초" : major_basic,
-            "전공필수" : major_required,
-            "전공선택" : major_select,
-            "전공합계" : sum_of_major,
-            "복필합계" : sum_of_bok_essential,
-            "복선합계" : sum_of_bok_optional,
-            "부필합계" : sum_of_boo_essential,
-            "부선합계" : sum_of_boo_optional,
-            "전체합계" : sum_of_all
-          }
+        {"credit": {
+            "중필": core_essential,
+            "중선": core_essential_selection,
+            "자교": liberal_arts,
+            "전공기초": major_basic,
+            "전공필수": major_required,
+            "전공선택": major_select,
+            "부전공": (sum_of_boo_essential + sum_of_boo_optional),
+            "복수전공": (sum_of_bok_essential + sum_of_bok_optional),
+            "교직": sum_of_edu,
+            "기타": sum_of_etc,
+            "학점통과": result_graduate
+        },
+            "origin": data
         }
     )
 
+
 def graduation(list_credits):
-    dict['root']['listRecord']['list'] = json.loads(jsonString)
-    standard_bok = 39.0
+    data = """{
+                "root":{
+                "listEtc":{
+                "list":[
+                { "maj_yn":"비대상", "early_yn":"비대상", "teh_yn":"비대상", "rotc_yn":"비대상", "etc_yn":"3학점", "div_yn":"대상", "termover_yn":"비대상"}
+                ]
+                },
+                listMain:{
+                list:[
+                { "student_no":"121693", "maj_div_cd":"1", "maj_div_cd_nm":"주전공", "dept_cd":"3111", "sch_dept_alias":"생명공학부 생명공학전공", "exam1":"N\/P", "exam2":"비대상", "exam3":"비대상", "cdt_div":"1", "cdt_div_nm":"기준정보", "r_cul_base_cdt":"0", "r_cul_req_cdt":"0", "r_cul_free_cdt":"0", "r_cul_cdt":"0", "r_maj_base_cdt":"0", "r_maj_req_cdt":"15", "r_maj_cdt":"39", "r_tot_cdt":"130", "avg_mrks":"1.75", "judge_pref":"미정", "rotc":"", "pass_vert":"", "domain_judge":"비대상", "r_cul_cor_cdt":"9", "r_maj_sel_cdt":"24", "r_maj_req_sel_cdt":"39", "slt_domain_judge":"", "notes":"과목이수표 참고"},
+                { "student_no":"121693", "maj_div_cd":"1", "maj_div_cd_nm":"주전공", "dept_cd":"3111", "sch_dept_alias":"생명공학부 생명공학전공", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"2", "cdt_div_nm":"기취득", "r_cul_base_cdt":"18", "r_cul_req_cdt":"17", "r_cul_free_cdt":"1", "r_cul_cdt":"45", "r_maj_base_cdt":"0", "r_maj_req_cdt":"15", "r_maj_cdt":"39", "r_tot_cdt":"84", "avg_mrks":"3.71", "judge_pref":"☞과목보기", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"9", "r_maj_sel_cdt":"24", "r_maj_req_sel_cdt":"39", "slt_domain_judge":"", "notes":""},
+                { "student_no":"121693", "maj_div_cd":"1", "maj_div_cd_nm":"주전공", "dept_cd":"3111", "sch_dept_alias":"생명공학부 생명공학전공", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"3", "cdt_div_nm":"수강중(재수강)", "r_cul_base_cdt":"0(0)", "r_cul_req_cdt":"0(0)", "r_cul_free_cdt":"0(0)", "r_cul_cdt":"0(0)", "r_maj_base_cdt":"0(0)", "r_maj_req_cdt":"0(0)", "r_maj_cdt":"0(0)", "r_tot_cdt":"0(0)", "avg_mrks":"평가전", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"0(0)", "r_maj_sel_cdt":"0(0)", "r_maj_req_sel_cdt":"0", "slt_domain_judge":"", "notes":""},
+                { "student_no":"121693", "maj_div_cd":"1", "maj_div_cd_nm":"주전공", "dept_cd":"3111", "sch_dept_alias":"생명공학부 생명공학전공", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"4", "cdt_div_nm":"취득예상", "r_cul_base_cdt":"18", "r_cul_req_cdt":"17", "r_cul_free_cdt":"1", "r_cul_cdt":"45", "r_maj_base_cdt":"0", "r_maj_req_cdt":"15", "r_maj_cdt":"39", "r_tot_cdt":"84", "avg_mrks":"3.71", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"9", "r_maj_sel_cdt":"24", "r_maj_req_sel_cdt":"39", "slt_domain_judge":"", "notes":""},
+                { "student_no":"121693", "maj_div_cd":"3", "maj_div_cd_nm":"복수전공", "dept_cd":"2922", "sch_dept_alias":"컴퓨터공학과", "exam1":"비대상", "exam2":"비대상", "exam3":"비대상", "cdt_div":"1", "cdt_div_nm":"기준정보", "r_cul_base_cdt":"0", "r_cul_req_cdt":"0", "r_cul_free_cdt":"0", "r_cul_cdt":"0", "r_maj_base_cdt":"0", "r_maj_req_cdt":"15", "r_maj_cdt":"0", "r_tot_cdt":"39", "avg_mrks":"", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"비대상", "r_cul_cor_cdt":"0", "r_maj_sel_cdt":"24", "r_maj_req_sel_cdt":"39", "slt_domain_judge":"", "notes":"과목이수표 참고"},
+                { "student_no":"121693", "maj_div_cd":"3", "maj_div_cd_nm":"복수전공", "dept_cd":"2922", "sch_dept_alias":"컴퓨터공학과", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"2", "cdt_div_nm":"기취득", "r_cul_base_cdt":"0", "r_cul_req_cdt":"0", "r_cul_free_cdt":"0", "r_cul_cdt":"0", "r_maj_base_cdt":"0", "r_maj_req_cdt":"15", "r_maj_cdt":"36", "r_tot_cdt":"36", "avg_mrks":"", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"0", "r_maj_sel_cdt":"21", "r_maj_req_sel_cdt":"36", "slt_domain_judge":"", "notes":""},
+                { "student_no":"121693", "maj_div_cd":"3", "maj_div_cd_nm":"복수전공", "dept_cd":"2922", "sch_dept_alias":"컴퓨터공학과", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"3", "cdt_div_nm":"수강중(재수강)", "r_cul_base_cdt":"0(0)", "r_cul_req_cdt":"0(0)", "r_cul_free_cdt":"0(0)", "r_cul_cdt":"0(0)", "r_maj_base_cdt":"0(0)", "r_maj_req_cdt":"7(0)", "r_maj_cdt":"10(0)", "r_tot_cdt":"0(0)", "avg_mrks":"", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"0(0)", "r_maj_sel_cdt":"3(0)", "r_maj_req_sel_cdt":"10", "slt_domain_judge":"", "notes":""},
+                { "student_no":"121693", "maj_div_cd":"3", "maj_div_cd_nm":"복수전공", "dept_cd":"2922", "sch_dept_alias":"컴퓨터공학과", "exam1":"", "exam2":"", "exam3":"", "cdt_div":"4", "cdt_div_nm":"취득예상", "r_cul_base_cdt":"0", "r_cul_req_cdt":"0", "r_cul_free_cdt":"0", "r_cul_cdt":"0", "r_maj_base_cdt":"0", "r_maj_req_cdt":"22", "r_maj_cdt":"46", "r_tot_cdt":"36", "avg_mrks":"", "judge_pref":"", "rotc":"", "pass_vert":"", "domain_judge":"", "r_cul_cor_cdt":"0", "r_maj_sel_cdt":"24", "r_maj_req_sel_cdt":"46", "slt_domain_judge":"", "notes":""}
+                ]
+                },
+                "strJudgePass":""
+                }
+                }"""
+
+    dict = json.loads(data)
+
+    standard_major_essential = 18.0
+    standard_major_sum = 45.0
+    standard_bok_essential = 15.0
+    standard_bok_sum = 39.0
     standard_boo = 21.0
 
-    if list_credits[11] >= 130:  # 총 학점 비교
+    if list_credits[14] >= 130:  # 총 학점 비교
         if list_credits[0] >= 15 & list_credits[1] >= 18:  # 중핵, 중선 비교
-            if dict['root']['div_yn'] == "비대상":  # 단일전공
-                if list_credits[4] >= 18 & list_credits[5] >= 45:  # 전필, 전선 비교
+
+            if dict['root']['listEtc']['list'][0]['div_yn'] == "비대상":  # 단일전공
+                if list_credits[4] == standard_major_essential & list_credits[6] >= standard_major_sum:  # 전필, 전공합계 비교
                     return True
             else:  # 복수/부 전공
-                if list_credits[4] >= 15 & list_credits[5] >= 24 & ((list_credits[7] >= 15 & list_credits[8] >= 24) | (list_credits[9] + list_credits[10] >= 21)):
+                if list_credits[4] == standard_bok_essential & list_credits[6] >= standard_bok_sum & ((list_credits[
+                                                                                                           7] >= standard_bok_essential & (
+                    list_credits[7] + list_credits[8]) >= standard_bok_sum) | (
+                        list_credits[9] + list_credits[10] >= standard_boo)):
                     return True
 
     return False
+
 
