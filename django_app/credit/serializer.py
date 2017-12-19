@@ -5,6 +5,8 @@ from .models import Credit
 
 class CreditSerializer(serializers.ModelSerializer):
 
+    data = serializers.JSONField()
+
     class Meta:
         model = Credit
         fields = (
