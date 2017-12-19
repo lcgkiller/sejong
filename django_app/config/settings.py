@@ -40,6 +40,9 @@ INSTALLED_APPS = (
 
     # Third-party
     'rest_framework',
+
+    # App
+    'credit',
 )
 
 MIDDLEWARE_CLASSES = (
