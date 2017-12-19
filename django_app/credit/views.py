@@ -137,6 +137,12 @@ def check_credit(request):
             "전공기초" : major_basic,
             "전공필수" : major_required,
             "전공선택" : major_select,
+            "전공합계" : sum_of_major,
+            "복필합계" : sum_of_bok_essential,
+            "복선합계" : sum_of_bok_optional,
+            "부필합계" : sum_of_boo_essential,
+            "부선합계" : sum_of_boo_optional,
+            "전체합계" : sum_of_all
           }
         }
     )

@@ -40,7 +40,6 @@ INSTALLED_APPS = (
 
     # Third-party
     'django_extensions',
-    'rest_framework',
 
     # App
     'credit',
